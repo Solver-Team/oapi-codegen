@@ -10,10 +10,6 @@ type MiddlewareFunc fiber.Handler
 // {{$opid}} operation middleware
 func (siw *ServerInterfaceWrapper) {{$opid}}(c *fiber.Ctx) error {
 
-  {{if or .RequiresParamObject (gt (len .PathParams) 0) }}
-  var err error
-  {{end}}
-
   {{range .PathParams}}// ------------- Path parameter "{{.ParamName}}" -------------
   var {{$varName := .GoVariableName}}{{$varName}} {{.TypeDef}}
 
@@ -21,8 +17,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(c *fiber.Ctx) error {
   {{$varName}} = c.Query("{{.ParamName}}")
   {{end}}
   {{if .IsJson}}
-  err = json.Unmarshal([]byte(c.Query("{{.ParamName}}")), &{{$varName}})
-  if err != nil {
+  err := json.Unmarshal([]byte(c.Params("{{.ParamName}}")), &{{$varName}}); err != nil {
     return fiber.NewError(fiber.StatusBadRequest, fmt.Errorf("Error unmarshaling parameter '{{.ParamName}}' as JSON: %w", err).Error())
   }
   {{end}}
@@ -44,8 +39,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(c *fiber.Ctx) error {
     var params {{.OperationId}}Params
 
     {{if .QueryParams}}
-    var query url.Values
-    query, err = url.ParseQuery(string(c.Request().URI().QueryString()))
+    query, err := url.ParseQuery(string(c.Request().URI().QueryString()))
     if err != nil {
       return fiber.NewError(fiber.StatusBadRequest, fmt.Errorf("Invalid format for query string: %w", err).Error())
     }
@@ -64,8 +58,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(c *fiber.Ctx) error {
 
         {{if .IsJson}}
           var value {{.TypeDef}}
-          err = json.Unmarshal([]byte(paramValue), &value)
-          if err != nil {
+          if err := json.Unmarshal([]byte(paramValue), &value); err != nil {
             return fiber.NewError(fiber.StatusBadRequest, fmt.Errorf("Error unmarshaling parameter '{{.ParamName}}' as JSON: %w", err).Error())
           }
 
@@ -78,8 +71,7 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(c *fiber.Ctx) error {
         }{{end}}
       {{end}}
       {{if .IsStyled}}
-      err = runtime.BindQueryParameter("{{.Style}}", {{.Explode}}, {{.Required}}, "{{.ParamName}}", query, &params.{{.GoName}})
-      if err != nil {
+      if err := runtime.BindQueryParameter("{{.Style}}", {{.Explode}}, {{.Required}}, "{{.ParamName}}", query, &params.{{.GoName}}); err != nil {
         return fiber.NewError(fiber.StatusBadRequest, fmt.Errorf("Invalid format for parameter {{.ParamName}}: %w", err).Error())
       }
       {{end}}
@@ -97,15 +89,13 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(c *fiber.Ctx) error {
         {{end}}
 
         {{if .IsJson}}
-          err = json.Unmarshal([]byte(value), &{{.GoName}})
-          if err != nil {
+          if err := json.Unmarshal([]byte(value), &{{.GoName}}); err != nil {
             return fiber.NewError(fiber.StatusBadRequest, fmt.Errorf("Error unmarshaling parameter '{{.ParamName}}' as JSON: %w", err).Error())
           }
         {{end}}
 
         {{if .IsStyled}}
-          err = runtime.BindStyledParameterWithOptions("{{.Style}}", "{{.ParamName}}", value, &{{.GoName}}, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: {{.Explode}}, Required: {{.Required}}})
-          if err != nil {
+          if err := runtime.BindStyledParameterWithOptions("{{.Style}}", "{{.ParamName}}", value, &{{.GoName}}, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: {{.Explode}}, Required: {{.Required}}}); err != nil {
             return fiber.NewError(fiber.StatusBadRequest, fmt.Errorf("Invalid format for parameter {{.ParamName}}: %w", err).Error())
           }
         {{end}}
