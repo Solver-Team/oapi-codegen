@@ -5,21 +5,18 @@ type ServerInterfaceWrapper struct {
 
 {{range .}}{{$opid := .OperationId}}// {{$opid}} converts echo context to params.
 func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
-    var err error
 {{range .PathParams}}// ------------- Path parameter "{{.ParamName}}" -------------
     var {{$varName := .GoVariableName}}{{$varName}} {{.TypeDef}}
 {{if .IsPassThrough}}
     {{$varName}} = ctx.Param("{{.ParamName}}")
 {{end}}
 {{if .IsJson}}
-    err = json.Unmarshal([]byte(ctx.Param("{{.ParamName}}")), &{{$varName}})
-    if err != nil {
+    if err := json.Unmarshal([]byte(ctx.Param("{{.ParamName}}")), &{{$varName}}); err != nil {
         return echo.NewHTTPError(http.StatusBadRequest, "Error unmarshaling parameter '{{.ParamName}}' as JSON")
     }
 {{end}}
 {{if .IsStyled}}
-    err = runtime.BindStyledParameterWithOptions("{{.Style}}", "{{.ParamName}}", ctx.Param("{{.ParamName}}"), &{{$varName}}, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: {{.Explode}}, Required: {{.Required}}})
-    if err != nil {
+    if err := runtime.BindStyledParameterWithOptions("{{.Style}}", "{{.ParamName}}", ctx.Param("{{.ParamName}}"), &{{$varName}}, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: {{.Explode}}, Required: {{.Required}}}); err != nil {
         return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter {{.ParamName}}: %s", err))
     }
 {{end}}
@@ -37,8 +34,7 @@ func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
       // ------------- {{if .Required}}Required{{else}}Optional{{end}} query parameter "{{.ParamName}}" -------------
     {{ end }}
     {{if .IsStyled}}
-    err = runtime.BindQueryParameter("{{.Style}}", {{.Explode}}, {{.Required}}, "{{.ParamName}}", ctx.QueryParams(), &params.{{.GoName}})
-    if err != nil {
+    if err := runtime.BindQueryParameter("{{.Style}}", {{.Explode}}, {{.Required}}, "{{.ParamName}}", ctx.QueryParams(), &params.{{.GoName}}); err != nil {
         return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter {{.ParamName}}: %s", err))
     }
     {{else}}
@@ -48,8 +44,7 @@ func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
     {{end}}
     {{if .IsJson}}
     var value {{.TypeDef}}
-    err = json.Unmarshal([]byte(paramValue), &value)
-    if err != nil {
+    if err := json.Unmarshal([]byte(paramValue), &value); err != nil {
         return echo.NewHTTPError(http.StatusBadRequest, "Error unmarshaling parameter '{{.ParamName}}' as JSON")
     }
     params.{{.GoName}} = {{if not .Required}}&{{end}}value
@@ -73,14 +68,12 @@ func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
         params.{{.GoName}} = {{if not .Required}}&{{end}}valueList[0]
 {{end}}
 {{if .IsJson}}
-        err = json.Unmarshal([]byte(valueList[0]), &{{.GoName}})
-        if err != nil {
+        if err := json.Unmarshal([]byte(valueList[0]), &{{.GoName}}); err != nil {
             return echo.NewHTTPError(http.StatusBadRequest, "Error unmarshaling parameter '{{.ParamName}}' as JSON")
         }
 {{end}}
 {{if .IsStyled}}
-        err = runtime.BindStyledParameterWithOptions("{{.Style}}", "{{.ParamName}}", valueList[0], &{{.GoName}}, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: {{.Explode}}, Required: {{.Required}}})
-        if err != nil {
+        if err := runtime.BindStyledParameterWithOptions("{{.Style}}", "{{.ParamName}}", valueList[0], &{{.GoName}}, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: {{.Explode}}, Required: {{.Required}}}); err != nil {
             return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter {{.ParamName}}: %s", err))
         }
 {{end}}
@@ -92,27 +85,24 @@ func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
 {{end}}
 
 {{range .CookieParams}}
-    if cookie, err := ctx.Cookie("{{.ParamName}}"); err == nil {
+    if cookie, cookieErr := ctx.Cookie("{{.ParamName}}"); cookieErr == nil {
     {{if .IsPassThrough}}
     params.{{.GoName}} = {{if not .Required}}&{{end}}cookie.Value
     {{end}}
     {{if .IsJson}}
     var value {{.TypeDef}}
-    var decoded string
     decoded, err := url.QueryUnescape(cookie.Value)
     if err != nil {
         return echo.NewHTTPError(http.StatusBadRequest, "Error unescaping cookie parameter '{{.ParamName}}'")
     }
-    err = json.Unmarshal([]byte(decoded), &value)
-    if err != nil {
+    if err := json.Unmarshal([]byte(decoded), &value); err != nil {
         return echo.NewHTTPError(http.StatusBadRequest, "Error unmarshaling parameter '{{.ParamName}}' as JSON")
     }
     params.{{.GoName}} = {{if not .Required}}&{{end}}value
     {{end}}
     {{if .IsStyled}}
     var value {{.TypeDef}}
-    err = runtime.BindStyledParameterWithOptions("simple", "{{.ParamName}}", cookie.Value, &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationCookie, Explode: {{.Explode}}, Required: {{.Required}}})
-    if err != nil {
+    if err := runtime.BindStyledParameterWithOptions("simple", "{{.ParamName}}", cookie.Value, &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationCookie, Explode: {{.Explode}}, Required: {{.Required}}}); err != nil {
         return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter {{.ParamName}}: %s", err))
     }
     params.{{.GoName}} = {{if not .Required}}&{{end}}value
